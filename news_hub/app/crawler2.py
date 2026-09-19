@@ -10,7 +10,7 @@ HEADERS = {
 }
 LIST_URL = "https://it.ithome.com/"
 API_URL = "https://it.ithome.com/category/domainpage?domain=it&subdomain=&ot={ot}"
-MAX_COUNT = 10              # 默认最多抓多少条新闻
+MAX_COUNT = 10              # 默认最多抓多少条新闻，每次抓取得到这么多
 
 
 def ot_to_ms(data_ot: str) -> int:
@@ -38,9 +38,13 @@ def run(max_count: int = MAX_COUNT):
     news_hrefs = []
     news_ots = []
     seen_hrefs = set()      # 用于去重（初始列表里的旧文章可能在接口批次里再次出现）
+    seen_titles = set()     # 标题去重：标题重复的新闻只保留第一条
 
     for li in li_list:
         title, href, ot = parse_li(li)
+        if title in seen_titles:
+            continue
+        seen_titles.add(title)
         news_titles.append(title)
         news_hrefs.append(href)
         news_ots.append(ot)
@@ -64,8 +68,9 @@ def run(max_count: int = MAX_COUNT):
         batch = frag.xpath('//li')
         for li in batch:
             title, href, ot = parse_li(li)
-            if href in seen_hrefs:
+            if title in seen_titles or href in seen_hrefs:
                 continue
+            seen_titles.add(title)
             seen_hrefs.add(href)
             news_titles.append(title)
             news_hrefs.append(href)

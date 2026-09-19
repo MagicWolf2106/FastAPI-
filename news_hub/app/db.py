@@ -48,11 +48,20 @@ def get_news(conn, page: int = 1, size: int = 10):
     cursor.close()
     return rows
 
+def title_exists(conn, title: str) -> bool:
+    """检查标题是否已入库（用于爬虫入库前去重）"""
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM news WHERE title = %s LIMIT 1", (title,))
+    row = cursor.fetchone()
+    cursor.close()
+    return row is not None  # 空返回true（没有重复），非空false（有重复的）
+
+
 def get_today_news(conn):
-    """获取今天的新闻（按文章发布时间过滤）"""
+    """让ai获取今天的新闻（按文章发布时间过滤）"""
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT id, title, content, news_time FROM news "
+        "SELECT id, title, LEFT(content, 300) AS content, news_time FROM news "
         "WHERE DATE(news_time) = CURDATE() ORDER BY id DESC",
     )
     rows = cursor.fetchall()

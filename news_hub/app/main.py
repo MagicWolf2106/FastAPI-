@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import re
 from fastapi import FastAPI, Query, Depends, HTTPException
 from pydantic import BaseModel, Field
 
@@ -34,28 +35,26 @@ def add_news(news: News, conn=Depends(db.get_db)):
     new_id = db.add_news(conn, news.title, news.content)
     return {"id": new_id, "message": "添加成功"}
 
-# 通过爬虫自动添加：调用接口时才运行爬虫，抓完直接入库
+# 通过爬虫自动添加：调用接口时才运行爬虫，抓完直接入库（标题重复的跳过）
 @app.post("/auto_add_news", description="运行爬虫，把抓到的新闻入库")
 def auto_add_news(conn=Depends(db.get_db)):
-    titles, times, contents = crawler2.run()      # 爬虫在这里才真正运行
-    count = 0
-    for t, tm, c in zip(titles, times, contents):
-        db.add_news(conn, t, c, tm)               # 逐条入库
+    news_titles, news_times, news_content = crawler2.run()
+    for title, time, content in zip(news_titles, news_times, news_content):
+        count = 0; rep = 0
+        if db.title_exists(conn, title):
+            rep += 1
+            continue
+        db.add_news(conn, title, content, time)
         count += 1
-    return {"count": count, "message": "爬取并入库完成"}
+    return {"title": f"添加成功！已添加{count}条，扫描到重复{rep}条未添加"}
 
 
 # 生成今日新闻日报：查库取当天新闻 → AI 总结 → 返回
 @app.post("/daily_report", description="AI 总结今天的新闻，生成日报")
 def daily_report(conn=Depends(db.get_db)):
     news_items = db.get_today_news(conn)
-    if not news_items:
-        return {"message": "今天还没有新闻，请先调用 /auto_add_news 抓取"}
-    try:
-        report = ai.summarize_today(news_items)
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"AI 调用失败：{e}")
-    return {"report": report}
+    summary = ai.summarize_today(news_items)
+    return {"summary": summary}
 
 
 # 获取新闻（分页展示，?page= 参数）

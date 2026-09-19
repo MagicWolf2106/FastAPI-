@@ -7,7 +7,6 @@ client = OpenAI(
     api_key=os.environ.get('DEEPSEEK_API_KEY'),
     base_url="https://api.deepseek.com")
 
-# 新闻编辑角色 + 输出要求 + 防编造约束
 SYSTEM_PROMPT = (
     "你是新闻编辑，根据提供的新闻写一份今日简报，"
     "按主题分组、每条一两句话，只依据提供的内容，不要编造。"
@@ -15,29 +14,23 @@ SYSTEM_PROMPT = (
 
 
 def summarize_today(news_items: list) -> str:
-    """把新闻列表总结成日报，返回文本。
-
+    """把新闻列表总结成日报，返回str文本。
     news_items: 字典列表，每项至少含 title、content 两个键
     """
-    if not news_items:
-        return "今天还没有新闻。"
-
-    # 拼装新闻数据：标题全保留，正文截断控制 token
-    lines = []
-    for i, item in enumerate(news_items, 1):
-        content = (item.get('content') or '')[:500]   # 每条正文只取前 500 字
-        lines.append(f"{i}. {item['title']}\n{content}")
-    news_text = "\n\n".join(lines)
-
+    # print(news_items)
+    # 将db返回的列表转换为字符串喂给ai
+    news = '\n'.join(f"标题：{item['title']}，内容：{item['content']}" for item in news_items[:10])
     response = client.chat.completions.create(
-        model="deepseek-v4-flash",      # 模型名以你账号实际开通的为准
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": f"以下是今天的新闻：\n\n{news_text}\n\n请根据以上内容生成今日新闻简报。"},
-        ],
-        stream=False,
+    model="deepseek-v4-flash",
+    messages=[
+          {"role": "system", "content": SYSTEM_PROMPT},
+          {"role": "user", "content": news}   # db里单独一个函数截取内容后返回
+    ],
+    stream=False,
     )
+
     return response.choices[0].message.content
+    
 
 
 # 直接运行本文件时用假数据测试（python ai.py）
