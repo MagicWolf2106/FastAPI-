@@ -1,10 +1,11 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Query, Depends
+from fastapi import FastAPI, Query, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from init_db import init_db
 import crawler2
 import db
+import ai
 
 
 @asynccontextmanager
@@ -42,6 +43,19 @@ def auto_add_news(conn=Depends(db.get_db)):
         db.add_news(conn, t, c, tm)               # 逐条入库
         count += 1
     return {"count": count, "message": "爬取并入库完成"}
+
+
+# 生成今日新闻日报：查库取当天新闻 → AI 总结 → 返回
+@app.post("/daily_report", description="AI 总结今天的新闻，生成日报")
+def daily_report(conn=Depends(db.get_db)):
+    news_items = db.get_today_news(conn)
+    if not news_items:
+        return {"message": "今天还没有新闻，请先调用 /auto_add_news 抓取"}
+    try:
+        report = ai.summarize_today(news_items)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"AI 调用失败：{e}")
+    return {"report": report}
 
 
 # 获取新闻（分页展示，?page= 参数）

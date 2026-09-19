@@ -48,6 +48,18 @@ def get_news(conn, page: int = 1, size: int = 10):
     cursor.close()
     return rows
 
+def get_today_news(conn):
+    """获取今天的新闻（按文章发布时间过滤）"""
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT id, title, content, news_time FROM news "
+        "WHERE DATE(news_time) = CURDATE() ORDER BY id DESC",
+    )
+    rows = cursor.fetchall()
+    cursor.close()
+    return rows
+
+
 def del_news(conn, id: int):
     '''删除新闻，根据id'''
     cursor = conn.cursor()
