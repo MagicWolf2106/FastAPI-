@@ -6,6 +6,8 @@
 
 全部用 IF NOT EXISTS，多次运行安全。
 """
+from mimetypes import init
+
 import pymysql
 
 # 从 db.py 复用连接配置，避免两处重复写密码
@@ -21,6 +23,14 @@ CREATE TABLE IF NOT EXISTS news (
     is_favorite int(1) not null default 0 comment '是否收藏'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 """
+CREATE_AI_SQL = '''
+create table if not exists ai_report (
+    id      int auto_increment primary key,
+    time    datetime,
+    content longtext,
+    is_favorite int(1) not null default 0 comment '是否收藏'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+'''
 
 
 def init_db():
@@ -43,8 +53,14 @@ def init_db():
         cursor.execute(f"CREATE DATABASE IF NOT EXISTS `{DB_NAME}` ")   # 尝试自己写一遍
         cursor.execute(f"USE `{DB_NAME}`")
         cursor.execute(CREATE_NEWS_SQL)
+        cursor.execute(CREATE_AI_SQL)
         conn.commit()
         cursor.close()
 
     finally:
         conn.close()
+
+
+if __name__ == '__main__':
+    init_db()
+    print("建表")
